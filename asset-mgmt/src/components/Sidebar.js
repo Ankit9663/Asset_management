@@ -75,10 +75,10 @@ export default function Sidebar() {
           <Link href="/login" style={{ textDecoration: 'none' }} title="Click to switch profile">
             <div className="sidebar-user" style={{ cursor: 'pointer' }}>
               <div className="sidebar-user-avatar">
-                {currentUser?.avatar || 'RP'}
+                {currentUser?.avatar || 'VT'}
               </div>
               <div className="sidebar-user-info">
-                <span className="sidebar-user-name">{currentUser?.name || 'Rajesh Patel'}</span>
+                <span className="sidebar-user-name">{currentUser?.name || 'Vikram Trivedi'}</span>
                 <span className="sidebar-user-role">
                   {currentUser?.category !== 'ALL' ? `${currentUser?.category} • ` : ''}
                   {currentUser?.divisionName || 'Dept-wide'}

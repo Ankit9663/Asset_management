@@ -13,7 +13,7 @@ import { SEEDED_USERS } from '@/lib/constants';
 const UserContext = createContext(null);
 
 export function UserProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(SEEDED_USERS[0]); // Default: Rajesh Patel (Admin)
+  const [currentUser, setCurrentUser] = useState(SEEDED_USERS[0]); // Default: Vikram Trivedi (Admin)
   const [allUsers, setAllUsers] = useState(SEEDED_USERS);
   const [isLoaded, setIsLoaded] = useState(false);
 

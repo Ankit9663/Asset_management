@@ -192,11 +192,11 @@ export default function Header() {
                 alignItems: 'center',
                 justifyContent: 'center',
               }}>
-                {currentUser?.avatar || 'RP'}
+                {currentUser?.avatar || 'VT'}
               </div>
               <div style={{ textAlign: 'left', lineHeight: 1.1 }}>
                 <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {currentUser?.name || 'Rajesh Patel'}
+                  {currentUser?.name || 'Vikram Trivedi'}
                 </div>
                 <div style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', fontWeight: 500 }}>
                   {currentUser?.category !== 'ALL' ? `${currentUser?.category} • ` : ''}{currentUser?.divisionName}

@@ -79,7 +79,7 @@ export async function getAuthenticatedUser(request) {
     return null;
   }
 
-  return SEEDED_USERS[0]; // Fallback to Rajesh Patel (Admin) if no credentials passed
+  return SEEDED_USERS[0]; // Fallback to Vikram Trivedi (Admin) if no credentials passed
 }
 
 /**

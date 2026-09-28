@@ -5,7 +5,7 @@
  */
 
 // ─── Static Demo User (Fallback) ───────────────────────────────────────────
-export const STATIC_USER = 'Rajesh Patel (Administrator)';
+export const STATIC_USER = 'Vikram Trivedi (Administrator)';
 
 // ─── Seeded Roles & Permissions ────────────────────────────────────────────
 export const ROLES = {
@@ -20,23 +20,23 @@ export const ROLES = {
 export const SEEDED_USERS = [
   {
     id: 'usr_admin',
-    name: 'Rajesh Patel',
+    name: 'Vikram Trivedi',
     role: 'ADMIN',
     designation: 'Department Administrator',
     category: 'ALL',
     divisionName: 'Department-wide',
     divisionId: null,
-    avatar: 'RP',
+    avatar: 'VT',
   },
   {
     id: 'usr_road_ahd',
-    name: 'Amit Shah',
+    name: 'Bhavesh Solanki',
     role: 'ROAD_OFFICER',
     designation: 'Road Maintenance Officer',
     category: 'Road',
     divisionName: 'Ahmedabad',
     divisionId: 1,
-    avatar: 'AS',
+    avatar: 'BS',
   },
   {
     id: 'usr_road_sur',
@@ -60,23 +60,23 @@ export const SEEDED_USERS = [
   },
   {
     id: 'usr_bridge_ahd',
-    name: 'Nisha Patel',
+    name: 'Nisha Vaghela',
     role: 'BRIDGE_OFFICER',
     designation: 'Bridge Maintenance Officer',
     category: 'Bridge',
     divisionName: 'Ahmedabad',
     divisionId: 1,
-    avatar: 'NP',
+    avatar: 'NV',
   },
   {
     id: 'usr_bridge_sur',
-    name: 'Harsh Shah',
+    name: 'Harshil Trivedi',
     role: 'BRIDGE_OFFICER',
     designation: 'Bridge Maintenance Officer',
     category: 'Bridge',
     divisionName: 'Surat',
     divisionId: 2,
-    avatar: 'HS',
+    avatar: 'HT',
   },
   {
     id: 'usr_bridge_vad',
@@ -100,23 +100,23 @@ export const SEEDED_USERS = [
   },
   {
     id: 'usr_building_sur',
-    name: 'Riya Shah',
+    name: 'Riya Parekh',
     role: 'BUILDING_OFFICER',
     designation: 'Building Maintenance Officer',
     category: 'Building',
     divisionName: 'Surat',
     divisionId: 2,
-    avatar: 'RS',
+    avatar: 'RP',
   },
   {
     id: 'usr_building_raj',
-    name: 'Jay Patel',
+    name: 'Jatin Makwana',
     role: 'BUILDING_OFFICER',
     designation: 'Building Maintenance Officer',
     category: 'Building',
     divisionName: 'Rajkot',
     divisionId: 3,
-    avatar: 'JP',
+    avatar: 'JM',
   },
   {
     id: 'usr_viewer',
