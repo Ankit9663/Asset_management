@@ -14,7 +14,14 @@ import IssueTable from '@/components/IssueTable';
 import ActivityTimeline from '@/components/ActivityTimeline';
 import Modal from '@/components/Modal';
 import IssueForm from '@/components/IssueForm';
+import AssetFinancialCard from '@/components/AssetFinancialCard';
+import InspectionTable from '@/components/InspectionTable';
+import RecordInspectionModal from '@/components/RecordInspectionModal';
+import IssueDetailModal from '@/components/IssueDetailModal';
+import MaintenanceHistoryTab from '@/components/MaintenanceHistoryTab';
+import AssetLifecycleTimeline from '@/components/AssetLifecycleTimeline';
 import { useToast } from '@/components/Toast';
+import { useUser } from '@/context/UserContext';
 
 const DETAIL_LABELS = {
   classification: 'Classification',
@@ -36,10 +43,12 @@ export default function AssetDetailPage() {
   const router = useRouter();
   const params = useParams();
   const toast = useToast();
+  const { currentUser } = useUser();
   const assetId = params.id;
 
   const [asset, setAsset] = useState(null);
   const [issues, setIssues] = useState([]);
+  const [inspections, setInspections] = useState([]);
   const [activity, setActivity] = useState([]);
   const [referenceData, setReferenceData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -47,6 +56,7 @@ export default function AssetDetailPage() {
 
   // Modal states
   const [showConditionModal, setShowConditionModal] = useState(false);
+  const [showInspectionModal, setShowInspectionModal] = useState(false);
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [showRetireModal, setShowRetireModal] = useState(false);
   const [showIssueDetailModal, setShowIssueDetailModal] = useState(false);
@@ -56,17 +66,19 @@ export default function AssetDetailPage() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [assetRes, issuesRes, activityRes, refRes] = await Promise.all([
+      const [assetRes, issuesRes, activityRes, refRes, inspRes] = await Promise.all([
         fetch(`/api/assets/${assetId}`),
         fetch(`/api/assets/${assetId}/issues`),
         fetch(`/api/assets/${assetId}/activity`),
         fetch('/api/reference'),
+        fetch(`/api/inspections?assetId=${assetId}`),
       ]);
 
       const assetData = await assetRes.json();
       const issuesData = await issuesRes.json();
       const activityData = await activityRes.json();
       const refData = await refRes.json();
+      const inspData = await inspRes.json();
 
       if (!assetRes.ok) {
         toast.error('Asset not found', assetData.error);
@@ -78,6 +90,7 @@ export default function AssetDetailPage() {
       setIssues(issuesData.issues || []);
       setActivity(activityData.activity || []);
       setReferenceData(refData);
+      setInspections(inspData.inspections || []);
     } catch (err) {
       console.error('Fetch error:', err);
       toast.error('Error', 'Failed to load asset data.');
@@ -190,6 +203,25 @@ export default function AssetDetailPage() {
     }
   };
 
+  const handleCreateIssueFromInspection = async (insp) => {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/inspections/${insp.id}/create-issue`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || data.error);
+      toast.success('Issue Generated', `${data.issue.id} created from inspection`);
+      setActiveTab('issues');
+      fetchAll();
+    } catch (err) {
+      toast.error('Error', err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const openIssueDetail = (issueId) => {
     const issue = issues.find(i => i.id === issueId);
     if (issue) {
@@ -213,6 +245,32 @@ export default function AssetDetailPage() {
   const openIssues = issues.filter(i => i.status !== 'Completed');
   const completedIssues = issues.filter(i => i.status === 'Completed');
   const conditions = referenceData?.assetConditions || ['Good', 'Fair', 'Poor', 'Critical'];
+
+  const isAdmin = currentUser?.role === 'ADMIN';
+  const isViewer = currentUser?.role === 'VIEWER';
+  const canManageCategory = isAdmin || (!isViewer && currentUser?.category === asset.category);
+
+  // Compute next inspection status
+  const nextDueDate = asset.last_inspection?.next_due_date ? new Date(asset.last_inspection.next_due_date) : null;
+  const today = new Date();
+  let inspectionStatus = 'Up to Date';
+  let inspectionStatusBadge = 'good';
+  if (nextDueDate) {
+    const diffDays = Math.ceil((nextDueDate - today) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) {
+      inspectionStatus = `Overdue by ${Math.abs(diffDays)}d`;
+      inspectionStatusBadge = 'critical';
+    } else if (diffDays <= 15) {
+      inspectionStatus = `Due in ${diffDays}d`;
+      inspectionStatusBadge = 'fair';
+    } else {
+      inspectionStatus = 'Scheduled';
+      inspectionStatusBadge = 'good';
+    }
+  } else if (inspections.length === 0) {
+    inspectionStatus = 'Pending';
+    inspectionStatusBadge = 'fair';
+  }
 
   return (
     <div id="asset-detail-page" className="page-enter">
@@ -246,31 +304,66 @@ export default function AssetDetailPage() {
           <button className="btn btn-secondary" onClick={() => router.push('/assets')}>
             ← Back
           </button>
-          <button className="btn btn-secondary" onClick={() => router.push(`/assets/${assetId}/edit`)} id="edit-asset-btn">
-            ✏️ Edit
-          </button>
-          <button className="btn btn-secondary" onClick={() => { setNewCondition(asset.condition); setShowConditionModal(true); }} id="update-condition-btn">
-            🔄 Update Condition
-          </button>
-          {asset.status !== 'Retired' && (
+          {isAdmin && (
+            <button className="btn btn-secondary" onClick={() => router.push(`/assets/${assetId}/edit`)} id="edit-asset-btn">
+              ✏️ Edit
+            </button>
+          )}
+          {canManageCategory && (
             <>
-              <button className="btn btn-primary" onClick={() => setShowIssueModal(true)} id="report-issue-btn">
-                🚨 Report Issue
+              <button className="btn btn-secondary" onClick={() => { setNewCondition(asset.condition); setShowConditionModal(true); }} id="update-condition-btn">
+                🔄 Update Condition
               </button>
-              <button className="btn btn-danger" onClick={() => setShowRetireModal(true)} id="retire-asset-btn">
-                🚫 Retire
+              <button className="btn btn-secondary" onClick={() => setShowInspectionModal(true)} id="record-inspection-btn">
+                📋 Record Inspection
               </button>
             </>
+          )}
+          {asset.status !== 'Retired' && !isViewer && (
+            <button className="btn btn-primary" onClick={() => setShowIssueModal(true)} id="report-issue-btn">
+              🚨 Report Issue
+            </button>
+          )}
+          {asset.status !== 'Retired' && isAdmin && (
+            <button className="btn btn-danger" onClick={() => setShowRetireModal(true)} id="retire-asset-btn">
+              🚫 Retire
+            </button>
           )}
         </div>
       </div>
 
-      {/* Overview + Details Grid */}
-      <div className="grid-2" style={{ marginBottom: '24px' }}>
+      {/* Recurring Issues Alert Banner */}
+      {asset.recurring_issues && asset.recurring_issues.length > 0 && (
+        <div style={{
+          background: '#fffbeb',
+          border: '1px solid #fde68a',
+          borderRadius: 'var(--radius)',
+          padding: '14px 18px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '14px'
+        }}>
+          <span style={{ fontSize: '24px' }}>⚠️</span>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#92400e' }}>
+              Recurring Maintenance Incidents Detected
+            </div>
+            <div style={{ fontSize: '13px', color: '#b45309', marginTop: '2px' }}>
+              This asset has logged repeated maintenance issues in category:{' '}
+              <strong>{asset.recurring_issues.map(r => `${r.issue_category} (${r.count}x)`).join(', ')}</strong>.
+              A comprehensive engineering audit or structural refurbishment is recommended.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Overview + Details + Inspection Status Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '24px' }}>
         {/* Overview */}
         <div className="card">
           <div className="card-title">Overview</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
             <InfoItem label="Type" value={asset.type} />
             <InfoItem label="District" value={asset.district} />
             <InfoItem label="Division" value={asset.division_name} />
@@ -284,9 +377,9 @@ export default function AssetDetailPage() {
 
         {/* Category Details */}
         <div className="card">
-          <div className="card-title">{asset.category} Details</div>
+          <div className="card-title">{asset.category} Specifications</div>
           {Object.keys(details).length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               {Object.entries(details).map(([key, val]) => (
                 <InfoItem key={key} label={DETAIL_LABELS[key] || key} value={val ?? '—'} />
               ))}
@@ -295,15 +388,84 @@ export default function AssetDetailPage() {
             <p className="text-secondary">No category-specific details recorded.</p>
           )}
         </div>
+
+        {/* Periodic Inspection Summary Card */}
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <div className="card-title" style={{ margin: 0 }}>Inspection Status</div>
+              <span className={`badge badge-${inspectionStatusBadge}`}>
+                {inspectionStatus}
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>
+                  Last Inspected
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
+                  {asset.last_inspection?.inspection_date ? formatDate(asset.last_inspection.inspection_date) : 'Never'}
+                </div>
+                {asset.last_inspection && (
+                  <div style={{ marginTop: '4px' }}>
+                    <ConditionBadge condition={asset.last_inspection.condition_assessment} />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>
+                  Next Due Date
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
+                  {nextDueDate ? formatDate(nextDueDate) : 'Unscheduled'}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  Total Inspections: <strong>{inspections.length}</strong>
+                </div>
+              </div>
+            </div>
+
+            {asset.last_inspection && (
+              <div style={{ fontSize: '12px', background: '#f8fafc', padding: '10px', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Latest Finding:</span>{' '}
+                <span style={{ color: 'var(--text-primary)' }}>{asset.last_inspection.observations}</span>
+              </div>
+            )}
+          </div>
+
+          {canManageCategory && (
+            <button
+              className="btn btn-secondary btn-sm"
+              style={{ marginTop: '16px', width: '100%', justifyContent: 'center' }}
+              onClick={() => setShowInspectionModal(true)}
+            >
+              📋 Record New Inspection
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Tabs: Issues / Activity */}
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '0' }}>
+      {/* Asset Financial & Lifecycle Overview Card */}
+      <AssetFinancialCard asset={asset} />
+
+      {/* Tabs: Issues / Periodic Inspections / Maintenance History / Lifecycle Timeline / Activity */}
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '0', overflowX: 'auto' }}>
         <TabButton active={activeTab === 'issues'} onClick={() => setActiveTab('issues')} id="tab-issues">
           🔧 Issues ({issues.length})
         </TabButton>
+        <TabButton active={activeTab === 'inspections'} onClick={() => setActiveTab('inspections')} id="tab-inspections">
+          📋 Periodic Inspections ({inspections.length})
+        </TabButton>
+        <TabButton active={activeTab === 'history'} onClick={() => setActiveTab('history')} id="tab-history">
+          🏁 Maintenance History ({completedIssues.length})
+        </TabButton>
+        <TabButton active={activeTab === 'timeline'} onClick={() => setActiveTab('timeline')} id="tab-timeline">
+          📜 Lifecycle Timeline
+        </TabButton>
         <TabButton active={activeTab === 'activity'} onClick={() => setActiveTab('activity')} id="tab-activity">
-          📋 Activity ({activity.length})
+          🕒 Activity Log ({activity.length})
         </TabButton>
       </div>
 
@@ -332,6 +494,63 @@ export default function AssetDetailPage() {
               <p className="empty-state-description" style={{ fontSize: '13px' }}>This asset has no maintenance issues.</p>
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'inspections' && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 600, margin: 0, color: 'var(--text-secondary)' }}>
+              Periodic Inspection Records ({inspections.length})
+            </h3>
+            {canManageCategory && (
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => setShowInspectionModal(true)}
+              >
+                + Record Inspection
+              </button>
+            )}
+          </div>
+          <InspectionTable
+            inspections={inspections}
+            onCreateIssue={handleCreateIssueFromInspection}
+            userCanManage={canManageCategory}
+          />
+        </div>
+      )}
+
+      {activeTab === 'history' && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 600, margin: 0, color: 'var(--text-secondary)' }}>
+              Verified Maintenance Outlay History ({completedIssues.length})
+            </h3>
+          </div>
+          <MaintenanceHistoryTab
+            completedIssues={completedIssues}
+            onIssueClick={(id) => openIssueDetail(id)}
+          />
+        </div>
+      )}
+
+      {activeTab === 'timeline' && (
+        <div className="card">
+          <div style={{ marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 4px 0', color: 'var(--text-primary)' }}>
+              Asset Chronological Lifecycle
+            </h3>
+            <p className="text-secondary" style={{ fontSize: '12.5px', margin: 0 }}>
+              Audit timeline tracing capital commissioning, periodic inspections, distress reports, and verified maintenance closeouts.
+            </p>
+          </div>
+          <AssetLifecycleTimeline
+            asset={asset}
+            issues={issues}
+            inspections={inspections}
+            activities={activity}
+            onIssueClick={(id) => openIssueDetail(id)}
+          />
         </div>
       )}
 
@@ -419,8 +638,20 @@ export default function AssetDetailPage() {
         isOpen={showIssueDetailModal}
         onClose={() => { setShowIssueDetailModal(false); setSelectedIssue(null); }}
         onAction={handleIssueAction}
+        onRefresh={fetchAll}
         officers={referenceData?.officers || []}
         loading={actionLoading}
+      />
+
+      {/* ─── Record Inspection Modal ─── */}
+      <RecordInspectionModal
+        isOpen={showInspectionModal}
+        onClose={() => setShowInspectionModal(false)}
+        asset={asset}
+        onSuccess={(newInsp) => {
+          toast.success('Inspection Recorded', `Condition assessed as ${newInsp.condition_assessment}`);
+          fetchAll();
+        }}
       />
     </div>
   );
@@ -475,138 +706,3 @@ function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-/** Issue detail modal with actions: assign, transition, complete, reopen */
-function IssueDetailModal({ issue, isOpen, onClose, onAction, officers = [], loading }) {
-  const [assignTo, setAssignTo] = useState('');
-  const [resolutionNotes, setResolutionNotes] = useState('');
-
-  useEffect(() => {
-    if (issue) {
-      setAssignTo(issue.assigned_to || '');
-      setResolutionNotes('');
-    }
-  }, [issue]);
-
-  if (!issue) return null;
-
-  const canAssign = issue.status === 'Open';
-  const canStartProgress = issue.status === 'Open' && (assignTo || issue.assigned_to);
-  const canComplete = issue.status === 'In Progress';
-  const canReopen = issue.status === 'Completed';
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Issue ${issue.id}`} size="lg">
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-        <div>
-          <div className="text-tertiary" style={{ fontSize: '12px', marginBottom: '2px' }}>Category</div>
-          <div>{issue.issue_category}</div>
-        </div>
-        <div>
-          <div className="text-tertiary" style={{ fontSize: '12px', marginBottom: '2px' }}>Priority</div>
-          <PriorityBadge priority={issue.priority} />
-        </div>
-        <div>
-          <div className="text-tertiary" style={{ fontSize: '12px', marginBottom: '2px' }}>Status</div>
-          <StatusBadge status={issue.status} />
-        </div>
-        <div>
-          <div className="text-tertiary" style={{ fontSize: '12px', marginBottom: '2px' }}>Assigned To</div>
-          <div>{issue.assigned_officer_name || <span className="text-tertiary">Unassigned</span>}</div>
-        </div>
-      </div>
-
-      <div style={{ marginBottom: '16px' }}>
-        <div className="text-tertiary" style={{ fontSize: '12px', marginBottom: '4px' }}>Description</div>
-        <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--text-primary)' }}>{issue.description}</p>
-      </div>
-
-      {issue.resolution_notes && (
-        <div style={{ marginBottom: '16px', padding: '12px', background: 'var(--color-completed-bg)', borderRadius: 'var(--radius)' }}>
-          <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-completed)', marginBottom: '4px' }}>Resolution Notes</div>
-          <p style={{ fontSize: '13px' }}>{issue.resolution_notes}</p>
-        </div>
-      )}
-
-      {/* Actions */}
-      <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {/* Assign */}
-        {(canAssign || issue.status === 'Open') && (
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Assign Officer</label>
-              <select className="form-select" value={assignTo} onChange={(e) => setAssignTo(e.target.value)} id="issue-assign-select">
-                <option value="">Unassigned</option>
-                {officers.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-              </select>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-              <button
-                className="btn btn-secondary btn-sm"
-                disabled={!assignTo || loading}
-                onClick={() => onAction(issue.id, { assignedTo: assignTo })}
-                id="assign-officer-btn"
-              >
-                Assign
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Transition buttons */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {canStartProgress && (
-            <button
-              className="btn btn-primary btn-sm"
-              disabled={loading}
-              onClick={() => onAction(issue.id, { status: 'In Progress', assignedTo: assignTo || issue.assigned_to })}
-              id="start-progress-btn"
-            >
-              ▶ Move to In Progress
-            </button>
-          )}
-
-          {issue.status === 'Open' && !canStartProgress && (
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.03)', padding: '10px 14px', borderRadius: 'var(--radius)', border: '1px dashed var(--border)', width: '100%' }}>
-              💡 Select an officer from the dropdown above to enable moving this issue to <strong>In Progress</strong>.
-            </div>
-          )}
-
-          {canComplete && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
-              <div className="form-group">
-                <label className="form-label">Resolution Notes <span className="required">*</span></label>
-                <textarea
-                  className="form-textarea"
-                  value={resolutionNotes}
-                  onChange={(e) => setResolutionNotes(e.target.value)}
-                  placeholder="Describe how this issue was resolved..."
-                  style={{ minHeight: '80px' }}
-                  id="resolution-notes-textarea"
-                />
-              </div>
-              <button
-                className="btn btn-primary btn-sm"
-                disabled={loading || !resolutionNotes.trim()}
-                onClick={() => onAction(issue.id, { status: 'Completed', resolutionNotes })}
-                id="complete-issue-btn"
-              >
-                ✅ Mark as Completed
-              </button>
-            </div>
-          )}
-
-          {canReopen && (
-            <button
-              className="btn btn-secondary btn-sm"
-              disabled={loading}
-              onClick={() => onAction(issue.id, { status: 'Open' })}
-              id="reopen-issue-btn"
-            >
-              🔓 Reopen Issue
-            </button>
-          )}
-        </div>
-      </div>
-    </Modal>
-  );
-}

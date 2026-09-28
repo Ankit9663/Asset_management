@@ -9,11 +9,21 @@ import { NextResponse } from 'next/server';
 import { query, ensureSchema } from '@/lib/db';
 import { logActivity } from '@/lib/activity-logger';
 import { ASSET_CONDITIONS, ACTIVITY_ACTIONS } from '@/lib/constants';
+import { getAuthenticatedUser, isViewer, canViewAsset } from '@/lib/auth';
 
 export async function PATCH(request, { params }) {
   try {
     await ensureSchema();
     const { id } = await params;
+    const user = await getAuthenticatedUser(request);
+
+    if (isViewer(user)) {
+      return NextResponse.json(
+        { error: 'Forbidden', message: 'Department Viewers have read-only access and cannot update asset conditions.' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
 
     if (!body.condition || !ASSET_CONDITIONS.includes(body.condition)) {
@@ -24,7 +34,7 @@ export async function PATCH(request, { params }) {
     }
 
     // Fetch existing
-    const existing = await query('SELECT id, condition, status FROM assets WHERE id = $1', [id]);
+    const existing = await query('SELECT id, category, condition, status FROM assets WHERE id = $1', [id]);
     if (!existing || existing.length === 0) {
       return NextResponse.json(
         { error: `Asset "${id}" not found.` },
@@ -33,6 +43,14 @@ export async function PATCH(request, { params }) {
     }
 
     const asset = existing[0];
+
+    // Category restriction
+    if (!canViewAsset(user, asset)) {
+      return NextResponse.json(
+        { error: 'Forbidden', message: `${user.designation} (${user.category}) cannot modify ${asset.category} conditions.` },
+        { status: 403 }
+      );
+    }
     const oldCondition = asset.condition;
 
     if (oldCondition === body.condition) {

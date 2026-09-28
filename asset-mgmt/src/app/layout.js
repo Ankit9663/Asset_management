@@ -3,6 +3,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
 import { ToastProvider } from "@/components/Toast";
+import { UserProvider } from "@/context/UserContext";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -20,17 +21,19 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={inter.variable}>
       <body>
-        <ToastProvider>
-          <div className="app-layout">
-            <Sidebar />
-            <div className="app-main">
-              <Header />
-              <div className="app-content">
-                {children}
+        <UserProvider>
+          <ToastProvider>
+            <div className="app-layout">
+              <Sidebar />
+              <div className="app-main">
+                <Header />
+                <div className="app-content">
+                  {children}
+                </div>
               </div>
             </div>
-          </div>
-        </ToastProvider>
+          </ToastProvider>
+        </UserProvider>
       </body>
     </html>
   );

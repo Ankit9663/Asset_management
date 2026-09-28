@@ -8,6 +8,7 @@ import { query, ensureSchema } from '@/lib/db';
 import { logActivity } from '@/lib/activity-logger';
 import { validateAssetCore, validateAssetDetails } from '@/lib/validators';
 import { ACTIVITY_ACTIONS } from '@/lib/constants';
+import { getAuthenticatedUser, isAdmin, isViewer, canViewAsset, canManageAsset } from '@/lib/auth';
 
 /**
  * GET /api/assets/[id]
@@ -21,11 +22,14 @@ export async function GET(request, { params }) {
   try {
     await ensureSchema();
     const { id } = await params;
+    const user = await getAuthenticatedUser(request);
 
     const rows = await query(
       `SELECT 
          a.id, a.category, a.type, a.name, a.district, a.address,
          a.latitude, a.longitude, a.division_id, a.condition, a.status,
+         a.construction_date, a.commissioning_date, a.construction_cost,
+         a.funding_source, a.warranty_expiry_date, a.last_renovation_date, a.book_value,
          a.details, a.created_at, a.updated_at,
          d.name AS division_name,
          (SELECT COUNT(*) FROM issues i WHERE i.asset_id = a.id) AS total_issues,
@@ -43,7 +47,72 @@ export async function GET(request, { params }) {
       );
     }
 
-    return NextResponse.json({ asset: rows[0] });
+    const asset = rows[0];
+
+    // Authorization: Category officers can only view assets matching their category
+    if (!canViewAsset(user, asset)) {
+      return NextResponse.json(
+        {
+          error: 'Forbidden',
+          message: `Access denied. ${user.designation} (${user.category}) is not authorized to access ${asset.category} assets.`,
+        },
+        { status: 403 }
+      );
+    }
+
+    // Financial & maintenance aggregations for completed issues
+    const maintStats = await query(
+      `SELECT 
+         COUNT(*) AS completed_issues,
+         COALESCE(SUM(COALESCE(actual_cost, approved_amount, 0)), 0) AS cumulative_maintenance_cost
+       FROM issues 
+       WHERE asset_id = $1 AND status = 'Completed'`,
+      [id]
+    );
+
+    // Most recent completed maintenance job
+    const recentMaint = await query(
+      `SELECT id, COALESCE(actual_cost, approved_amount, 0) AS actual_cost, 
+              COALESCE(completed_date, reported_date, NOW()) AS updated_at
+       FROM issues 
+       WHERE asset_id = $1 AND status = 'Completed'
+       ORDER BY COALESCE(completed_date, reported_date, NOW()) DESC LIMIT 1`,
+      [id]
+    );
+
+    // Latest periodic inspection
+    const recentInsp = await query(
+      `SELECT * FROM inspections 
+       WHERE asset_id = $1 
+       ORDER BY inspection_date DESC LIMIT 1`,
+      [id]
+    );
+
+    // Total inspections count
+    const inspCount = await query(
+      `SELECT COUNT(*) AS total_inspections FROM inspections WHERE asset_id = $1`,
+      [id]
+    );
+
+    // Recurring issue detection (>= 2 issues in same category on this asset)
+    const recurringRows = await query(
+      `SELECT issue_category, COUNT(*) AS count
+       FROM issues
+       WHERE asset_id = $1
+       GROUP BY issue_category
+       HAVING COUNT(*) >= 2`,
+      [id]
+    );
+
+    asset.completed_issues = Number(maintStats[0]?.completed_issues || 0);
+    asset.cumulative_maintenance_cost = Number(maintStats[0]?.cumulative_maintenance_cost || 0);
+    asset.most_recent_maintenance_date = recentMaint[0]?.updated_at || null;
+    asset.most_recent_maintenance_cost = recentMaint[0]?.actual_cost ? Number(recentMaint[0].actual_cost) : null;
+    asset.last_inspection = recentInsp[0] || null;
+    asset.total_inspections = Number(inspCount[0]?.total_inspections || 0);
+    asset.recurring_issues = recurringRows || [];
+
+    return NextResponse.json({ asset });
   } catch (error) {
     console.error('GET /api/assets/[id] error:', error);
     return NextResponse.json(
@@ -64,6 +133,18 @@ export async function PUT(request, { params }) {
   try {
     await ensureSchema();
     const { id } = await params;
+    const user = await getAuthenticatedUser(request);
+
+    if (!canManageAsset(user)) {
+      return NextResponse.json(
+        {
+          error: 'Forbidden',
+          message: 'Only Department Administrators are authorized to edit asset specifications.',
+        },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
 
     // Fetch existing asset

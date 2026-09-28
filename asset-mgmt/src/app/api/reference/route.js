@@ -10,20 +10,30 @@ import { query, ensureSchema } from '@/lib/db';
 import {
   DISTRICTS, ASSET_CATEGORIES, ASSET_TYPES, ASSET_CONDITIONS,
   ASSET_STATUSES, ISSUE_CATEGORIES, ISSUE_PRIORITIES, ISSUE_STATUSES,
-  ASSET_DETAIL_FIELDS,
+  ASSET_DETAIL_FIELDS, INSPECTION_TYPES, INSPECTION_CHECKLISTS,
+  SEEDED_USERS, DIVISIONS,
 } from '@/lib/constants';
 
 export async function GET() {
   try {
     await ensureSchema();
 
-    const divisions = await query('SELECT id, name FROM divisions ORDER BY id');
-    const officers = await query(`
-      SELECT o.id, o.name, o.division_id AS "divisionId", d.name AS "divisionName"
-      FROM officers o
-      JOIN divisions d ON o.division_id = d.id
-      ORDER BY o.id
-    `);
+    let divisions = DIVISIONS;
+    try {
+      const dbDivisions = await query('SELECT id, name FROM divisions ORDER BY id');
+      if (dbDivisions && dbDivisions.length > 0) divisions = dbDivisions;
+    } catch (e) {}
+
+    // Category-specific officers for assignment
+    const officers = SEEDED_USERS.filter(u => u.role !== 'VIEWER').map(u => ({
+      id: u.id,
+      name: `${u.name} (${u.designation.replace(' Maintenance Officer', '')} - ${u.divisionName})`,
+      rawName: u.name,
+      role: u.role,
+      category: u.category,
+      divisionName: u.divisionName,
+      divisionId: u.divisionId,
+    }));
 
     return NextResponse.json({
       divisions,
@@ -34,6 +44,8 @@ export async function GET() {
       assetConditions: ASSET_CONDITIONS,
       assetStatuses: ASSET_STATUSES,
       assetDetailFields: ASSET_DETAIL_FIELDS,
+      inspectionTypes: INSPECTION_TYPES,
+      inspectionChecklists: INSPECTION_CHECKLISTS,
       issueCategories: ISSUE_CATEGORIES,
       issuePriorities: ISSUE_PRIORITIES,
       issueStatuses: ISSUE_STATUSES,

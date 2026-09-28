@@ -9,11 +9,20 @@ import { NextResponse } from 'next/server';
 import { query, ensureSchema } from '@/lib/db';
 import { logActivity } from '@/lib/activity-logger';
 import { ACTIVITY_ACTIONS } from '@/lib/constants';
+import { getAuthenticatedUser, canManageAsset } from '@/lib/auth';
 
 export async function PATCH(request, { params }) {
   try {
     await ensureSchema();
     const { id } = await params;
+    const user = await getAuthenticatedUser(request);
+
+    if (!canManageAsset(user)) {
+      return NextResponse.json(
+        { error: 'Forbidden', message: 'Only Department Administrators are authorized to retire assets.' },
+        { status: 403 }
+      );
+    }
 
     // Fetch existing
     const existing = await query('SELECT id, name, status FROM assets WHERE id = $1', [id]);

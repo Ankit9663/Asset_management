@@ -6,6 +6,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useUser } from '@/context/UserContext';
 
 const NAV_ITEMS = [
   {
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { currentUser } = useUser();
 
   const isActive = (href) => {
     if (href === '/') return pathname === '/';
@@ -56,7 +58,6 @@ export default function Sidebar() {
                   className={`sidebar-link${isActive(item.href) ? ' active' : ''}`}
                   id={`nav-${item.href.replace(/\//g, '-').replace(/^-/, '')}`}
                   onClick={() => {
-                    // Close mobile menu on navigation
                     const sidebar = document.querySelector('.sidebar');
                     sidebar?.classList.remove('open');
                   }}
@@ -69,15 +70,22 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        {/* User */}
+        {/* User Profile */}
         <div className="sidebar-footer">
-          <div className="sidebar-user">
-            <div className="sidebar-user-avatar">DO</div>
-            <div className="sidebar-user-info">
-              <span className="sidebar-user-name">Demo Officer</span>
-              <span className="sidebar-user-role">R&B Division</span>
+          <Link href="/login" style={{ textDecoration: 'none' }} title="Click to switch profile">
+            <div className="sidebar-user" style={{ cursor: 'pointer' }}>
+              <div className="sidebar-user-avatar">
+                {currentUser?.avatar || 'RP'}
+              </div>
+              <div className="sidebar-user-info">
+                <span className="sidebar-user-name">{currentUser?.name || 'Rajesh Patel'}</span>
+                <span className="sidebar-user-role">
+                  {currentUser?.category !== 'ALL' ? `${currentUser?.category} • ` : ''}
+                  {currentUser?.divisionName || 'Dept-wide'}
+                </span>
+              </div>
             </div>
-          </div>
+          </Link>
         </div>
       </aside>
       <div
