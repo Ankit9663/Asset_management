@@ -1,13 +1,15 @@
 'use client';
 
 /**
- * AssetForm — Create or Edit asset form with category-driven dynamic fields.
+ * AssetForm — Modern Enterprise Light Theme Asset Creation & Editing.
+ * Features compact segmented category selection and high-legibility inputs.
  * 
  * Props:
- *   initialData — asset data for editing (null for create)
- *   onSubmit    — callback(formData) → returns promise
- *   isEdit      — boolean, if true category is locked
- *   loading     — submit in progress
+ *   initialData   — asset data for editing (null for create)
+ *   onSubmit      — callback(formData) → returns promise
+ *   isEdit        — boolean, if true category is locked
+ *   loading       — submit in progress
+ *   referenceData — system reference constants
  */
 
 import { useState, useEffect } from 'react';
@@ -21,9 +23,8 @@ const CATEGORY_ICONS = {
 };
 
 export default function AssetForm({ initialData, onSubmit, isEdit = false, loading = false, referenceData }) {
-  const [step, setStep] = useState(initialData ? 2 : 1);
   const [formData, setFormData] = useState({
-    category: initialData?.category || '',
+    category: initialData?.category || 'Road',
     type: initialData?.type || '',
     name: initialData?.name || '',
     district: initialData?.district || '',
@@ -36,7 +37,7 @@ export default function AssetForm({ initialData, onSubmit, isEdit = false, loadi
   });
   const [errors, setErrors] = useState([]);
 
-  // Parse details if it's a string
+  // Parse details if string
   useEffect(() => {
     if (initialData?.details && typeof initialData.details === 'string') {
       try {
@@ -65,8 +66,8 @@ export default function AssetForm({ initialData, onSubmit, isEdit = false, loadi
   };
 
   const selectCategory = (cat) => {
+    if (isEdit || cat === formData.category) return;
     setFormData(prev => ({ ...prev, category: cat, type: '', details: {} }));
-    setStep(2);
   };
 
   const handleSubmit = async (e) => {
@@ -80,98 +81,87 @@ export default function AssetForm({ initialData, onSubmit, isEdit = false, loadi
     }
   };
 
-  // Step 1: Category Selection
-  if (step === 1 && !isEdit) {
-    return (
-      <div id="asset-form-step-1">
-        <h3 style={{ marginBottom: '24px', fontSize: '18px', fontWeight: 600 }}>
-          Select Asset Category
-        </h3>
-        <div className="grid-3">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              className="card-glass"
-              onClick={() => selectCategory(cat)}
-              style={{
-                cursor: 'pointer',
-                textAlign: 'center',
-                padding: '32px 24px',
-                transition: 'all 0.2s',
-              }}
-              id={`category-select-${cat.toLowerCase()}`}
-            >
-              <div style={{ fontSize: '40px', marginBottom: '12px' }}>
-                {CATEGORY_ICONS[cat]}
-              </div>
-              <div style={{ fontSize: '18px', fontWeight: 600 }}>
-                {cat}
-              </div>
-              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                {cat === 'Road' && 'Highways, district roads, city roads'}
-                {cat === 'Bridge' && 'Bridges, flyovers, culverts'}
-                {cat === 'Building' && 'Offices, schools, facilities'}
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Step 2: Full form
   return (
     <form onSubmit={handleSubmit} id="asset-form">
-      {/* Errors */}
+      {/* Error banner */}
       {errors.length > 0 && (
         <div style={{
           background: 'var(--color-poor-bg)',
-          border: '1px solid rgba(239,68,68,0.3)',
+          border: '1px solid var(--color-poor-border)',
           borderRadius: 'var(--radius)',
           padding: '12px 16px',
           marginBottom: '20px',
         }}>
           {errors.map((e, i) => (
-            <div key={i} style={{ color: 'var(--color-poor)', fontSize: '13px' }}>• {e}</div>
+            <div key={i} style={{ color: 'var(--color-poor)', fontSize: '13px', fontWeight: 500 }}>
+              • {e}
+            </div>
           ))}
         </div>
       )}
 
-      {/* Category indicator */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <span className={`badge badge-${formData.category.toLowerCase()}`} style={{ fontSize: '14px', padding: '6px 14px' }}>
-          {CATEGORY_ICONS[formData.category]} {formData.category}
-        </span>
-        {!isEdit && (
-          <button
-            type="button"
-            className="btn-ghost text-sm"
-            onClick={() => setStep(1)}
-            style={{ padding: '4px 8px' }}
-          >
-            Change
-          </button>
-        )}
-        {isEdit && <span className="text-tertiary text-sm">(Category is locked)</span>}
+      {/* ─── Compact Segmented Category Selection ─── */}
+      <div style={{ marginBottom: '24px' }}>
+        <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>
+          Asset Category {isEdit ? <span className="text-muted" style={{ fontWeight: 400 }}>(Locked after creation)</span> : <span className="required">*</span>}
+        </label>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+          {CATEGORIES.map((cat) => {
+            const isSelected = formData.category === cat;
+            return (
+              <button
+                key={cat}
+                type="button"
+                disabled={isEdit}
+                onClick={() => selectCategory(cat)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px 16px',
+                  borderRadius: 'var(--radius)',
+                  border: isSelected ? '2px solid var(--color-primary)' : '1px solid var(--border)',
+                  background: isSelected ? 'var(--color-primary-light)' : '#ffffff',
+                  color: isSelected ? 'var(--color-primary)' : 'var(--text-secondary)',
+                  fontWeight: isSelected ? 600 : 500,
+                  cursor: isEdit ? 'not-allowed' : 'pointer',
+                  transition: 'all var(--transition-fast)',
+                  boxShadow: isSelected ? 'var(--shadow-xs)' : 'none',
+                }}
+                id={`category-select-${cat.toLowerCase()}`}
+              >
+                <span style={{ fontSize: '22px' }}>{CATEGORY_ICONS[cat]}</span>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: '14px', lineHeight: 1.2 }}>{cat}</div>
+                  <div style={{ fontSize: '11px', color: isSelected ? 'var(--color-primary)' : 'var(--text-tertiary)', marginTop: '2px' }}>
+                    {cat === 'Road' && 'Highways, MDRs'}
+                    {cat === 'Bridge' && 'Bridges, Flyovers'}
+                    {cat === 'Building' && 'Offices, Facilities'}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Common fields */}
-      <div className="form-section" style={{ marginBottom: '20px' }}>
-        <div className="form-section-title">Basic Information</div>
+      {/* ─── Core Information ─── */}
+      <div className="card" style={{ marginBottom: '20px', padding: '20px 24px' }}>
+        <div className="card-title">Basic Information</div>
 
-        <div className="form-group">
+        <div className="form-group" style={{ marginBottom: '16px' }}>
           <label className="form-label">Asset Name <span className="required">*</span></label>
           <input
             className="form-input"
             value={formData.name}
             onChange={(e) => updateField('name', e.target.value)}
-            placeholder="Enter asset name"
+            placeholder="e.g. Ahmedabad-Vadodara Expressway"
             required
             id="asset-name-input"
           />
         </div>
 
-        <div className="form-row">
+        <div className="form-row" style={{ marginBottom: '16px' }}>
           <div className="form-group">
             <label className="form-label">Type <span className="required">*</span></label>
             <select
@@ -201,7 +191,7 @@ export default function AssetForm({ initialData, onSubmit, isEdit = false, loadi
           </div>
         </div>
 
-        <div className="form-row">
+        <div className="form-row" style={{ marginBottom: '16px' }}>
           <div className="form-group">
             <label className="form-label">Division <span className="required">*</span></label>
             <select
@@ -217,7 +207,7 @@ export default function AssetForm({ initialData, onSubmit, isEdit = false, loadi
           </div>
 
           <div className="form-group">
-            <label className="form-label">Condition</label>
+            <label className="form-label">Initial Condition</label>
             <select
               className="form-select"
               value={formData.condition}
@@ -229,13 +219,13 @@ export default function AssetForm({ initialData, onSubmit, isEdit = false, loadi
           </div>
         </div>
 
-        <div className="form-group">
-          <label className="form-label">Address</label>
+        <div className="form-group" style={{ marginBottom: '16px' }}>
+          <label className="form-label">Address / Location Description</label>
           <input
             className="form-input"
             value={formData.address}
             onChange={(e) => updateField('address', e.target.value)}
-            placeholder="Street address or landmark"
+            placeholder="e.g. NH-48 via Paddhari junction"
             id="asset-address-input"
           />
         </div>
@@ -268,10 +258,10 @@ export default function AssetForm({ initialData, onSubmit, isEdit = false, loadi
         </div>
       </div>
 
-      {/* Category-specific details */}
+      {/* ─── Category-Specific Details ─── */}
       {assetDetailFields.length > 0 && (
-        <div className="form-section" style={{ marginBottom: '20px' }}>
-          <div className="form-section-title">{formData.category} Details</div>
+        <div className="card" style={{ marginBottom: '24px', padding: '20px 24px' }}>
+          <div className="card-title">{formData.category} Specifications</div>
           <div className="form-row">
             {assetDetailFields.map((field) => (
               <div className="form-group" key={field.key}>
@@ -309,7 +299,7 @@ export default function AssetForm({ initialData, onSubmit, isEdit = false, loadi
         </div>
       )}
 
-      {/* Submit */}
+      {/* ─── Actions ─── */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
         <button type="submit" className="btn btn-primary" disabled={loading} id="asset-form-submit">
           {loading && <span className="loading-spinner loading-spinner-sm" />}

@@ -67,6 +67,32 @@ export default function Header() {
               Gujarat R&B Dept • Gandhinagar
             </span>
           </div>
+
+          {/* Quick Search */}
+          <div className="header-search" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <span style={{ position: 'absolute', left: '10px', color: 'var(--text-muted)', fontSize: '13px' }}>🔍</span>
+            <input
+              type="text"
+              placeholder="Search assets (e.g. NH-48)..."
+              style={{
+                padding: '6px 12px 6px 30px',
+                borderRadius: 'var(--radius)',
+                border: '1px solid var(--border)',
+                background: '#f8fafc',
+                fontSize: '13px',
+                color: 'var(--text-primary)',
+                width: '240px',
+                outline: 'none',
+                transition: 'all var(--transition-fast)',
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && e.target.value.trim()) {
+                  window.location.href = `/assets?search=${encodeURIComponent(e.target.value.trim())}`;
+                }
+              }}
+              id="header-global-search"
+            />
+          </div>
         </div>
 
         <div className="header-right">
@@ -76,10 +102,10 @@ export default function Header() {
             onClick={() => setShowResetModal(true)}
             title="Reset database to initial demo state (18 assets, 14 issues)"
             id="header-reset-demo"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', border: '1px solid var(--border)' }}
           >
             <span>🔄</span>
-            <span className="reset-btn-label">Reset Demo Data</span>
+            <span className="reset-btn-label">Reset Demo</span>
           </button>
 
           {/* Notifications Dropdown */}
@@ -97,8 +123,8 @@ export default function Header() {
             {showNotifications && (
               <div className="notif-popover" id="notifications-popover">
                 <div className="notif-header">
-                  <span style={{ fontWeight: 600, fontSize: '13px' }}>System Notifications</span>
-                  <span className="badge badge-critical" style={{ fontSize: '10px' }}>2 Attention</span>
+                  <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>System Notifications</span>
+                  <span className="badge badge-critical" style={{ fontSize: '10px' }}>2 Critical</span>
                 </div>
                 <div className="notif-list">
                   <div className="notif-item">
@@ -125,6 +151,35 @@ export default function Header() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* User Profile Pill */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '4px 10px 4px 6px',
+            borderRadius: 'var(--radius-full)',
+            background: '#f8fafc',
+            border: '1px solid var(--border)',
+          }}>
+            <div style={{
+              width: '26px',
+              height: '26px',
+              borderRadius: '50%',
+              background: '#2563eb',
+              color: '#ffffff',
+              fontSize: '11px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              DO
+            </div>
+            <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Demo Officer
+            </span>
           </div>
         </div>
       </header>

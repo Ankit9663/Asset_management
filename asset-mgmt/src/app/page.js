@@ -67,55 +67,60 @@ export default function DashboardPage() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid-stats" style={{ marginBottom: '32px' }}>
+      <div className="grid-stats">
         <StatCard
           icon="📊"
           label="Total Assets"
           value={d.totalAssets ?? 0}
-          accent="var(--color-primary)"
-          accentBg="var(--color-primary-glow)"
+          subtext="Across 33 Gujarat districts"
+          accent="#2563eb"
+          accentBg="#eff6ff"
           onClick={() => router.push('/assets')}
         />
         <StatCard
           icon="🛣️"
           label="Roads"
           value={d.byCategory?.Road ?? 0}
-          accent="var(--color-road)"
-          accentBg="var(--color-road-bg)"
+          subtext="State highways & MDRs"
+          accent="#6366f1"
+          accentBg="#eef2ff"
           onClick={() => router.push('/assets?category=Road')}
         />
         <StatCard
           icon="🌉"
           label="Bridges"
           value={d.byCategory?.Bridge ?? 0}
-          accent="var(--color-bridge)"
-          accentBg="var(--color-bridge-bg)"
+          subtext="River crossings & flyovers"
+          accent="#0284c7"
+          accentBg="#f0f9ff"
           onClick={() => router.push('/assets?category=Bridge')}
         />
         <StatCard
           icon="🏛️"
           label="Buildings"
           value={d.byCategory?.Building ?? 0}
-          accent="var(--color-building)"
-          accentBg="var(--color-building-bg)"
+          subtext="Civic & admin complexes"
+          accent="#d97706"
+          accentBg="#fffbeb"
           onClick={() => router.push('/assets?category=Building')}
+        />
+        <StatCard
+          icon="⚠️"
+          label="Critical / Poor"
+          value={d.poorCriticalAssets ?? 0}
+          subtext="Requires immediate inspection"
+          accent="#dc2626"
+          accentBg="#fef2f2"
+          onClick={() => router.push('/assets?condition=Critical')}
         />
         <StatCard
           icon="🔧"
           label="Open Issues"
           value={d.openIssues ?? 0}
-          accent="var(--color-open)"
-          accentBg="var(--color-open-bg)"
+          subtext="Active maintenance tickets"
+          accent="#ea580c"
+          accentBg="#fff7ed"
           onClick={() => router.push('/issues')}
-        />
-        <StatCard
-          icon="⚠️"
-          label="Poor / Critical"
-          value={d.poorCriticalAssets ?? 0}
-          footer="Assets needing attention"
-          accent="var(--color-poor)"
-          accentBg="var(--color-poor-bg)"
-          onClick={() => router.push('/assets?condition=Poor')}
         />
       </div>
 

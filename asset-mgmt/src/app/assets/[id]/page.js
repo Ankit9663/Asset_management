@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import Link from 'next/link';
 import ConditionBadge from '@/components/ConditionBadge';
 import StatusBadge from '@/components/StatusBadge';
 import PriorityBadge from '@/components/PriorityBadge';
@@ -215,16 +216,27 @@ export default function AssetDetailPage() {
 
   return (
     <div id="asset-detail-page" className="page-enter">
+      {/* Breadcrumb Hierarchy */}
+      <div className="breadcrumb">
+        <Link href="/" className="breadcrumb-link">Dashboard</Link>
+        <span className="breadcrumb-separator">/</span>
+        <Link href="/assets" className="breadcrumb-link">Asset Inventory</Link>
+        <span className="breadcrumb-separator">/</span>
+        <span className="breadcrumb-current">{asset.name}</span>
+      </div>
+
       {/* Header */}
       <div className="page-header">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '24px' }}>{CATEGORY_ICONS[asset.category]}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
+            <span style={{ fontSize: '28px' }}>{CATEGORY_ICONS[asset.category]}</span>
             <h1 className="page-title">{asset.name}</h1>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="text-mono text-secondary" style={{ fontSize: '14px' }}>{asset.id}</span>
-            <span className="text-tertiary">•</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span className="text-mono" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-primary)', background: '#eff6ff', padding: '3px 8px', borderRadius: 'var(--radius-sm)' }}>
+              {asset.id}
+            </span>
+            <span className="text-muted">•</span>
             <span className={`badge badge-${asset.category?.toLowerCase()}`}>{asset.category}</span>
             <ConditionBadge condition={asset.condition} />
             <StatusBadge status={asset.status} />
@@ -238,7 +250,7 @@ export default function AssetDetailPage() {
             ✏️ Edit
           </button>
           <button className="btn btn-secondary" onClick={() => { setNewCondition(asset.condition); setShowConditionModal(true); }} id="update-condition-btn">
-            🔄 Condition
+            🔄 Update Condition
           </button>
           {asset.status !== 'Retired' && (
             <>
@@ -417,10 +429,21 @@ export default function AssetDetailPage() {
 /* ─── Sub Components ──────────────────────────────────────────────── */
 
 function InfoItem({ label, value }) {
+  const isEmpty = value === null || value === undefined || value === '' || value === '—';
   return (
-    <div>
-      <div className="text-tertiary" style={{ fontSize: '12px', fontWeight: 500, marginBottom: '2px' }}>{label}</div>
-      <div style={{ fontSize: '14px' }}>{value}</div>
+    <div style={{ padding: '8px 0' }}>
+      <div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)' }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize: '14px',
+        fontWeight: isEmpty ? 400 : 600,
+        color: isEmpty ? 'var(--text-muted)' : 'var(--text-primary)',
+        marginTop: '2px',
+        fontStyle: isEmpty ? 'italic' : 'normal'
+      }}>
+        {isEmpty ? 'Not Specified' : value}
+      </div>
     </div>
   );
 }
@@ -433,7 +456,13 @@ function TabButton({ active, onClick, children, id }) {
       id={id}
       style={{
         borderRadius: '8px 8px 0 0',
+        padding: '8px 16px',
+        fontSize: '13.5px',
+        fontWeight: active ? 600 : 500,
+        background: active ? '#ffffff' : 'transparent',
+        color: active ? 'var(--color-primary)' : 'var(--text-tertiary)',
         borderBottom: active ? '2px solid var(--color-primary)' : '2px solid transparent',
+        boxShadow: active ? 'var(--shadow-xs)' : 'none',
       }}
     >
       {children}

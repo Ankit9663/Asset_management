@@ -1,5 +1,5 @@
 /**
- * ActivityTimeline — chronological activity log display.
+ * ActivityTimeline — Refined Enterprise Vertical Timeline.
  * 
  * Props:
  *   activities — array of activity log entries
@@ -9,7 +9,7 @@
 import EmptyState from './EmptyState';
 
 const ACTION_ICONS = {
-  'ASSET_REGISTERED':     '📝',
+  'ASSET_REGISTERED':     '🛣️',
   'ASSET_EDITED':         '✏️',
   'CONDITION_UPDATED':    '🔄',
   'ASSET_RETIRED':        '🚫',
@@ -21,15 +21,15 @@ const ACTION_ICONS = {
 };
 
 const ACTION_COLORS = {
-  'ASSET_REGISTERED':     'var(--color-good)',
-  'ASSET_EDITED':         'var(--color-primary)',
-  'CONDITION_UPDATED':    'var(--color-fair)',
-  'ASSET_RETIRED':        'var(--color-retired)',
-  'ISSUE_REPORTED':       'var(--color-open)',
-  'ISSUE_ASSIGNED':       'var(--color-primary)',
-  'ISSUE_STATUS_UPDATED': 'var(--color-in-progress)',
-  'ISSUE_COMPLETED':      'var(--color-completed)',
-  'ISSUE_REOPENED':       'var(--color-fair)',
+  'ASSET_REGISTERED':     '#2563eb',
+  'ASSET_EDITED':         '#475569',
+  'CONDITION_UPDATED':    '#d97706',
+  'ASSET_RETIRED':        '#64748b',
+  'ISSUE_REPORTED':       '#dc2626',
+  'ISSUE_ASSIGNED':       '#2563eb',
+  'ISSUE_STATUS_UPDATED': '#b45309',
+  'ISSUE_COMPLETED':      '#059669',
+  'ISSUE_REOPENED':       '#d97706',
 };
 
 function formatTimestamp(ts) {
@@ -51,9 +51,8 @@ function formatTimestamp(ts) {
 export default function ActivityTimeline({ activities = [], loading = false }) {
   if (loading) {
     return (
-      <div className="loading-page">
-        <div className="loading-spinner" />
-        <span>Loading activity...</span>
+      <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+        Loading activity...
       </div>
     );
   }
@@ -73,21 +72,24 @@ export default function ActivityTimeline({ activities = [], loading = false }) {
       {activities.map((entry) => (
         <div key={entry.id} className="timeline-item" id={`activity-${entry.id}`}>
           <div
-            className="timeline-icon"
-            style={{ borderColor: ACTION_COLORS[entry.action] || 'var(--border)' }}
-          >
-            {ACTION_ICONS[entry.action] || '📌'}
-          </div>
+            className="timeline-node"
+            style={{
+              borderColor: ACTION_COLORS[entry.action] || '#94a3b8',
+            }}
+          />
           <div className="timeline-content">
-            <div className="timeline-summary">{entry.summary}</div>
+            <div className="timeline-summary">
+              <span style={{ marginRight: '6px' }}>{ACTION_ICONS[entry.action] || '📌'}</span>
+              {entry.summary}
+            </div>
             <div className="timeline-meta">
               <span>{formatTimestamp(entry.timestamp)}</span>
               <span>•</span>
-              <span>{entry.actor}</span>
+              <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{entry.actor}</span>
               {entry.asset_name && (
                 <>
                   <span>•</span>
-                  <span className="text-secondary">{entry.asset_name}</span>
+                  <span style={{ color: 'var(--color-primary)', fontWeight: 500 }}>{entry.asset_name}</span>
                 </>
               )}
             </div>
